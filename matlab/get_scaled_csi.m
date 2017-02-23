@@ -2,12 +2,14 @@
 %
 % (c) 2008-2011 Daniel Halperin <dhalperi@cs.washington.edu>
 %
-function ret = get_scaled_csi(csi, recent_rssi)
+function ret = get_scaled_csi(csi_entry)
+    
 
+    csi = csi_entry.csi;
     % Calculate the scale factor between normalized CSI and RSSI (mW)
     csi_sq = csi .* conj(csi);
     csi_pwr = sum(csi_sq(:));
-    rssi_pwr = dbinv(recent_rssi);
+    rssi_pwr = dbinv(get_total_rss(csi_entry));
     %   Scale CSI -> Signal power : rssi_pwr / (mean of csi_pwr)
     scale = rssi_pwr / (csi_pwr / size(csi,3));
 
@@ -30,20 +32,20 @@ function ret = get_scaled_csi(csi, recent_rssi)
     % The total power is then 1^2 = 1 per entry, and there are
     % Nrx*Ntx entries per carrier. We only want one carrier's worth of
     % error, since we only computed one carrier's worth of signal above.
-    quant_error_pwr = scale; %(csi_st.nr * csi_st.nc);
+    quant_error_pwr = scale * double(csi_entry.nr * csi_entry.nc);
 
     % Total noise and error power
     total_noise_pwr = thermal_noise_pwr + quant_error_pwr;
 
     % Ret now has units of sqrt(SNR) just like H in textbooks
     ret = csi * sqrt(scale / total_noise_pwr);
-%     if csi_st.nc == 2
-%         ret = ret * sqrt(2);
+    if csi_entry.nc == 2
+        ret = ret * sqrt(2);
 %     elseif csi_st.nc == 3
 %         % Note: this should be sqrt(3)~ 4.77 dB. But, 4.5 dB is how
 %         % Intel (and some other chip makers) approximate a factor of 3
 %         %
 %         % You may need to change this if your card does the right thing.
 %         ret = ret * sqrt(dbinv(4.5));
-%     end
+    end
 end
